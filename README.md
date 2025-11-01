@@ -4,6 +4,8 @@ Lightweight Angular utility that persistently saves form state (values + simple 
 
 This README documents the public API, configuration, examples, SSR notes, and common use-cases.
 
+https://www.npmjs.com/package/ng-form-saver 
+
 ## Features
 
 - Automatically persist form values and basic meta (dirty/touched)
