@@ -91,6 +91,35 @@
           }
         }
       }
+    },
+    "ng-form-saver": {
+      "projectType": "library",
+      "root": "projects/ng-form-saver",
+      "sourceRoot": "projects/ng-form-saver/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ng-form-saver/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/ng-form-saver/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "tsConfig": "projects/ng-form-saver/tsconfig.spec.json"
+          }
+        }
+      }
     }
+  },
+  "cli": {
+    "analytics": "3a24f690-0667-4a2d-8739-bcb03307587c"
   }
 }

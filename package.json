@@ -1,6 +1,14 @@
 {
   "name": "form-saver",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ng-form-saver.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/ng-form-saver/issues"
+  },
+  "homepage": "https://github.com/your-username/ng-form-saver#readme",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -46,6 +54,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "ng-packagr": "^20.3.0",
     "typescript": "~5.8.2"
   }
 }

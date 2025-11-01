@@ -1,0 +1,27 @@
+{
+  "name": "ng-form-saver",
+  "version": "0.0.1",
+  "description": "Persist and restore Angular form state (values + simple meta) with an easy directive and service.",
+  "keywords": ["angular","forms","form","persistence","localstorage","ssr"],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miladj3/ng-form-saver.git"
+  },
+  "homepage": "https://github.com/miladj3/ng-form-saver#readme",
+  "bugs": {
+    "url": "https://github.com/miladj3/ng-form-saver/issues"
+  },
+  "peerDependencies": {
+    "@angular/common": "^20.3.0",
+    "@angular/core": "^20.3.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
+}
