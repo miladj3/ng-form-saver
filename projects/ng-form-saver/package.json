@@ -14,8 +14,8 @@
     "url": "https://github.com/miladj3/ng-form-saver/issues"
   },
   "peerDependencies": {
-    "@angular/common": "^20.3.0",
-    "@angular/core": "^20.3.0"
+    "@angular/common": "^20.1.0",
+    "@angular/core": "^20.1.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"
