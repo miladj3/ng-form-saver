@@ -1,5 +1,4 @@
-# ng-form-saver  [![npm latest version](https://img.shields.io/npm/v/ng-form-saver/latest.svg?style=flat-square)](https://www.npmjs.com/package/ng-form-saver)
-
+# ng-form-saver  [![npm latest version](https://img.shields.io/npm/v/ng-form-saver/latest.svg?style=flat-square)](https://www.npmjs.com/package/ng-form-saver) ![NPM Downloads](https://img.shields.io/npm/d18m/ng-form-saver)
 
 Lightweight Angular utility that persistently saves form state (values + simple meta like dirty/touched) to storage (default: localStorage) and restores it on attach. Designed to work with both Reactive Forms and Template-driven Forms (ngForm). Useful for long forms, multi-step forms, or protecting user input across reloads and navigation.
 
