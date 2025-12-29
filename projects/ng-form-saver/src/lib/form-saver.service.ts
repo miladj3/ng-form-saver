@@ -22,41 +22,51 @@ export class FormSaverService {
     const key = this.resolveKey(opts);
 
     // Try restore on attach
-    const restored = this.tryRestore(control, storage, key, opts);
-    if (restored) {
-      // noop
+    const restoration = this.tryRestore(control, storage, key, opts);
+
+    if (restoration instanceof Promise) {
+      restoration.catch(() => { /* ignore restoration errors */ });
     }
 
     const sub = new Subscription();
     const valueChanges = control.valueChanges.pipe(startWith(control.value), debounceTime(opts.debounceTime ?? 300));
 
-    sub.add(
-      valueChanges.subscribe(() => {
-        const payload = this.buildPayload(control, opts);
-        try {
-          storage.setItem(key, JSON.stringify(payload));
-        } catch {
-          // ignore quota or serialization errors
-        }
-      })
-    );
+    sub.add(valueChanges.subscribe(() => this.save(control, opts, key, storage)));
 
     const handle: AttachHandle = {
       key,
       control,
       destroy: () => sub.unsubscribe(),
-      clear: () => this.clear(key, storage)
+      clear: () => this.clear(key, storage),
+      save: () => this.save(control, opts, key, storage)
     };
 
     return handle;
   }
 
   clear(key: string, storage?: StorageLike): void {
-    (storage ?? this.getStorage()).removeItem(key);
+    const s = (storage ?? this.getStorage());
+    const res = s.removeItem(key);
+    if (res instanceof Promise) res.catch(() => {});
   }
 
-  private getStorage(custom?: StorageLike): StorageLike {
-    if (custom) return custom;
+  public getStorage(custom?: StorageLike | 'localStorage' | 'sessionStorage'): StorageLike {
+    if (custom === 'localStorage') {
+      try {
+        if (typeof localStorage !== 'undefined') return localStorage;
+      } catch {
+        /* fallback */
+      }
+    } else if (custom === 'sessionStorage') {
+      try {
+        if (typeof sessionStorage !== 'undefined') return sessionStorage;
+      } catch {
+        /* fallback */
+      }
+    } else if (custom) {
+      return custom;
+    }
+
     try {
       if (typeof localStorage !== 'undefined') return localStorage;
     } catch {
@@ -80,9 +90,22 @@ export class FormSaverService {
     return 'form-saver';
   }
 
-  private tryRestore(control: AbstractControl, storage: StorageLike, key: string, opts: FormSaverOptions): boolean {
-    const raw = storage.getItem(key);
+  private tryRestore(control: AbstractControl, storage: StorageLike, key: string, opts: FormSaverOptions): boolean | Promise<boolean> {
+    const rawOrPromise = storage.getItem(key);
+
+    if (rawOrPromise instanceof Promise) {
+      return rawOrPromise.then(raw => {
+        if (!raw) return false;
+        return this.restorePayload(control, raw, opts);
+      });
+    }
+
+    const raw = rawOrPromise;
     if (!raw) return false;
+    return this.restorePayload(control, raw, opts);
+  }
+
+  private restorePayload(control: AbstractControl, raw: string, opts: FormSaverOptions): boolean {
     try {
       const parsed = JSON.parse(raw) as StoredPayload;
       const migrated = this.applyMigrations(parsed, opts.version, opts.migrations ?? []);
@@ -153,6 +176,18 @@ export class FormSaverService {
       Object.entries(ctrl.controls).forEach(([k, c]) => this.applyMeta(c, meta, [...path, k]));
     } else if (ctrl instanceof FormArray) {
   ctrl.controls.forEach((c: AbstractControl, i: number) => this.applyMeta(c, meta, [...path, String(i)]));
+    }
+  }
+
+  private save(control: AbstractControl, opts: FormSaverOptions, key: string, storage: StorageLike) {
+    const payload = this.buildPayload(control, opts);
+    try {
+      const result = storage.setItem(key, JSON.stringify(payload));
+      if (result instanceof Promise) {
+          result.catch(() => { /* ignore */ });
+      }
+    } catch {
+      // ignore quota or serialization errors
     }
   }
 }
