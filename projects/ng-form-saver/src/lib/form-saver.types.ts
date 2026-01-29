@@ -20,6 +20,7 @@ export interface FormSaverOptions {
   migrations?: FormSaverMigration[];
   clearOnSubmit?: boolean;
   storage?: StorageLike | 'localStorage' | 'sessionStorage'; // default localStorage
+  ttl?: number; // Time to live in milliseconds. If set, saved data will expire after this duration.
 }
 
 export interface AttachHandle {

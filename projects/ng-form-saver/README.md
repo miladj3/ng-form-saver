@@ -40,29 +40,29 @@ npm publish
 
 ## Quick Start (Reactive Forms)
 
-1) Import the library symbols from the published package (or for local dev you may import from the project path):
+1. Import the library symbols from the published package (or for local dev you may import from the project path):
 
-2) Use the `formSaver` directive on a form. The simplest usage is to provide a string key.
+2. Use the `formSaver` directive on a form. The simplest usage is to provide a string key.
 
 Template example:
 
 ```html
 <!-- Reactive form -->
 <form [formGroup]="profileForm" formSaver="profile-form">
-   <input formControlName="name" />
-   <input formControlName="email" />
-   <button type="submit">Save</button>
+  <input formControlName="name" />
+  <input formControlName="email" />
+  <button type="submit">Save</button>
 </form>
 ```
 
 Component setup (minimal):
 
 ```ts
-import { FormGroup, FormControl } from '@angular/forms';
+import { FormGroup, FormControl } from "@angular/forms";
 
 profileForm = new FormGroup({
-   name: new FormControl(''),
-   email: new FormControl('')
+  name: new FormControl(""),
+  email: new FormControl(""),
 });
 ```
 
@@ -72,8 +72,8 @@ That’s it — the directive will persist the form value to localStorage under 
 
 ```html
 <form #f="ngForm" formSaver="contact-form">
-   <input name="fullName" ngModel />
-   <input name="phone" ngModel />
+  <input name="fullName" ngModel />
+  <input name="phone" ngModel />
 </form>
 ```
 
@@ -91,9 +91,7 @@ The directive accepts multiple input forms via the `formSaver` input binding:
 Example with options:
 
 ```html
-<form [formGroup]="form" [formSaver]="{ key: 'order', debounceTime: 500, clearOnSubmit: true }">
-   ...
-</form>
+<form [formGroup]="form" [formSaver]="{ key: 'order', debounceTime: 500, clearOnSubmit: true }">...</form>
 ```
 
 ## Programmatic API — FormSaverService
@@ -121,27 +119,26 @@ AttachHandle (returned from attach):
 
 ## Options (FormSaverOptions)
 
-| Property | Type | Default | Description |
-|---|---:|---|---|
-| key | string | — | Storage key. If omitted and `autoKey` is true, key is derived from current route (requires Router). Otherwise defaults to 'form-saver'. |
-| autoKey | boolean | false | Derive key from current route URL (requires Router in DI). |
-| debounceTime | number | 300 | Debounce ms for valueChanges persistence. |
-| version | number | — | Optional version identifier for saved payload. Works with migrations. |
-| migrations | FormSaverMigration[] | [] | Array of migrations to bring old payloads forward. |
-| clearOnSubmit | boolean | false | When true, the directive will clear the saved payload on ngSubmit. |
-| storage | StorageLike | localStorage (fallback to in-memory) | Custom storage backend implementing getItem/setItem/removeItem. |
+| Property      |                 Type | Default                              | Description                                                                                                                                           |
+| ------------- | -------------------: | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| key           |               string | —                                    | Storage key. If omitted and `autoKey` is true, key is derived from current route (requires Router). Otherwise defaults to 'form-saver'.               |
+| autoKey       |              boolean | false                                | Derive key from current route URL (requires Router in DI).                                                                                            |
+| debounceTime  |               number | 300                                  | Debounce ms for valueChanges persistence.                                                                                                             |
+| version       |               number | —                                    | Optional version identifier for saved payload. Works with migrations.                                                                                 |
+| migrations    | FormSaverMigration[] | []                                   | Array of migrations to bring old payloads forward.                                                                                                    |
+| clearOnSubmit |              boolean | false                                | When true, the directive will clear the saved payload on ngSubmit.                                                                                    |
+| storage       |          StorageLike | localStorage (fallback to in-memory) | Custom storage backend implementing getItem/setItem/removeItem.                                                                                       |
+| ttl           |               number | —                                    | Time to live in milliseconds. If set, saved data will automatically expire after this duration. On restore, expired data is cleared and not restored. |
 
 ### Default provider
 
 The library exposes an injection token `FORM_SAVER_DEFAULT_OPTIONS` with defaults. Use `provideFormSaver(defaults)` to configure defaults for your app:
 
 ```ts
-import { provideFormSaver } from 'ng-form-saver';
+import { provideFormSaver } from "ng-form-saver";
 
 bootstrapApplication(App, {
-   providers: [
-      provideFormSaver({ debounceTime: 500, clearOnSubmit: true })
-   ]
+  providers: [provideFormSaver({ debounceTime: 500, clearOnSubmit: true })],
 });
 ```
 
@@ -154,14 +151,49 @@ Saved payloads include an optional `v` field (version). To migrate older payload
 Example migration:
 
 ```ts
-const migrations = [
-   { from: 1, to: 2, migrate: (data) => ({ ...data, createdAt: Date.now() }) }
-];
+const migrations = [{ from: 1, to: 2, migrate: (data) => ({ ...data, createdAt: Date.now() }) }];
 
-this.saver.attach(this.form, { key: 'profile', version: 2, migrations });
+this.saver.attach(this.form, { key: "profile", version: 2, migrations });
 ```
 
 When a saved payload with `v = 1` is found, the code above will apply the migrate function and set `v` to `2`.
+
+## TTL (Time to Live)
+
+You can set an optional `ttl` (in milliseconds) to automatically expire saved form data after a certain duration. When the data expires, it will be cleared on the next restore attempt and the form will not be populated with stale data.
+
+### Template example with TTL:
+
+```html
+<!-- Form data expires after 1 hour (3600000 ms) -->
+<form [formGroup]="form" [formSaver]="{ key: 'checkout', ttl: 3600000 }">
+  <input formControlName="cardNumber" />
+  <input formControlName="expiry" />
+  <button type="submit">Pay</button>
+</form>
+```
+
+### Programmatic example with TTL:
+
+```ts
+// Form data expires after 30 minutes
+const handle = this.saver.attach(this.form, {
+  key: "sensitive-form",
+  ttl: 30 * 60 * 1000, // 30 minutes in milliseconds
+});
+```
+
+### Common TTL values:
+
+| Duration   | Milliseconds                          |
+| ---------- | ------------------------------------- |
+| 5 minutes  | `5 * 60 * 1000` (300000)              |
+| 30 minutes | `30 * 60 * 1000` (1800000)            |
+| 1 hour     | `60 * 60 * 1000` (3600000)            |
+| 24 hours   | `24 * 60 * 60 * 1000` (86400000)      |
+| 7 days     | `7 * 24 * 60 * 60 * 1000` (604800000) |
+
+**Note:** Expiration is checked only when restoring data. If the user has the form open continuously, the data will continue to be saved. The TTL resets on each save.
 
 ## Custom storage
 
@@ -169,12 +201,12 @@ If you need to persist to a server or to `sessionStorage` or a cookie-backed sto
 
 ```ts
 const customStorage = {
-   getItem: (k: string) => myStore.get(k) ?? null,
-   setItem: (k: string, v: string) => myStore.set(k, v),
-   removeItem: (k: string) => myStore.delete(k)
+  getItem: (k: string) => myStore.get(k) ?? null,
+  setItem: (k: string, v: string) => myStore.set(k, v),
+  removeItem: (k: string) => myStore.delete(k),
 };
 
-this.saver.attach(this.form, { key: 'cart', storage: customStorage });
+this.saver.attach(this.form, { key: "cart", storage: customStorage });
 ```
 
 ## Use-cases
@@ -190,9 +222,9 @@ When rendering on the server, ensure your app bootstraps with a `BootstrapContex
 
 ```ts
 // src/main.server.ts
-import { bootstrapApplication, BootstrapContext } from '@angular/platform-browser';
-import { App } from './app/app';
-import { config } from './app/app.config.server';
+import { bootstrapApplication, BootstrapContext } from "@angular/platform-browser";
+import { App } from "./app/app";
+import { config } from "./app/app.config.server";
 
 const bootstrap = (context: BootstrapContext) => bootstrapApplication(App, config, context);
 export default bootstrap;
@@ -207,7 +239,7 @@ Also remember `localStorage` is not available on the server — the library fall
 - `FORM_SAVER_DEFAULT_OPTIONS` — injection token for defaults.
 - `provideFormSaver(defaults)` — helper provider factory to register defaults.
 - Types exported in `form-saver.types`:
-   - `FormSaverOptions`, `FormSaverMigration`, `StorageLike`, `AttachHandle`.
+  - `FormSaverOptions`, `FormSaverMigration`, `StorageLike`, `AttachHandle`.
 
 ## Troubleshooting
 
@@ -232,4 +264,3 @@ Contributions, bug reports and PRs are welcome. Please follow the standard Angul
 ## License
 
 MIT
-

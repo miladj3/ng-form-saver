@@ -12,7 +12,7 @@ import { FormSaverDirective, FormSaverService } from '../../../projects/ng-form-
     <section class="demo">
       <h2>ng-form-saver demo</h2>
 
-      <form [formGroup]="form" [formSaver]="demoKey" (ngSubmit)="onSubmit()">
+      <form [formGroup]="form" [formSaver]="formOptions" (ngSubmit)="onSubmit()">
         <div>
           <label for="name">Name</label>
           <input id="name" type="text" formControlName="name" />
@@ -30,13 +30,17 @@ import { FormSaverDirective, FormSaverService } from '../../../projects/ng-form-
       </form>
 
       <h3>Saved payload (localStorage key: {{ demoKey }})</h3>
+      <p class="ttl-info">TTL: 1 minute — data expires at: {{ expiresAtFormatted }}</p>
       <pre>{{ savedPayload }}</pre>
     </section>
   `,
-  styles: [`.demo { max-width:520px; padding:1rem } label { display:block; margin-top:8px } input { width:100%; padding:6px; } pre { background:#f5f5f5; padding:8px }`]
+  styles: [`.demo { max-width:520px; padding:1rem } label { display:block; margin-top:8px } input { width:100%; padding:6px; } pre { background:#f5f5f5; padding:8px } .ttl-info { font-size:0.9em; color:#666; margin:4px 0 }`]
 })
 export class FormDemoComponent implements OnDestroy {
   readonly demoKey = 'demo-form';
+
+  // TTL set to 1 minute (60,000 ms), explicitly using localStorage
+  readonly formOptions = { key: 'demo-form', ttl: 1 * 60 * 1000, storage: 'sessionStorage' as const };
 
   form = new FormGroup({
     name: new FormControl(''),
@@ -44,12 +48,18 @@ export class FormDemoComponent implements OnDestroy {
   });
 
   savedPayload: string | null = null;
+  expiresAtFormatted: string = '—';
   private sub = new Subscription();
 
   constructor(private saver: FormSaverService) {
     // update preview on changes
+    this.updateSavedDisplay();
+    this.sub.add(this.form.valueChanges.subscribe(() => this.updateSavedDisplay()));
+  }
+
+  private updateSavedDisplay(): void {
     this.savedPayload = this.readSaved();
-    this.sub.add(this.form.valueChanges.subscribe(() => (this.savedPayload = this.readSaved())));
+    this.expiresAtFormatted = this.getExpiresAt();
   }
 
   private readSaved(): string | null {
@@ -60,14 +70,28 @@ export class FormDemoComponent implements OnDestroy {
     }
   }
 
+  private getExpiresAt(): string {
+    try {
+      const raw = this.readSaved();
+      if (!raw) return '—';
+      const parsed = JSON.parse(raw);
+      if (parsed.expiresAt) {
+        return new Date(parsed.expiresAt).toLocaleTimeString();
+      }
+      return '—';
+    } catch {
+      return '—';
+    }
+  }
+
   clearSaved() {
     this.saver.clear(this.demoKey);
-    this.savedPayload = this.readSaved();
+    this.updateSavedDisplay();
     this.form.reset();
   }
 
   onSubmit() {
-    this.savedPayload = this.readSaved();
+    this.updateSavedDisplay();
   }
 
   ngOnDestroy(): void {

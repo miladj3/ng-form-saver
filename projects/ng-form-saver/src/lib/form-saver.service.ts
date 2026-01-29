@@ -1,7 +1,7 @@
 import { Injectable, Optional, inject } from '@angular/core';
 import { AbstractControl, FormArray, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
-import { debounceTime, startWith, Subscription } from 'rxjs';
+import { debounceTime, Subscription } from 'rxjs';
 import { FORM_SAVER_DEFAULT_OPTIONS } from './form-saver.tokens';
 import { AttachHandle, FormSaverMigration, FormSaverOptions, StorageLike } from './form-saver.types';
 
@@ -9,12 +9,13 @@ interface StoredPayload {
   v?: number | string;
   data: any;
   meta?: Record<string, { dirty: boolean; touched: boolean }>;
+  expiresAt?: number; // Unix timestamp (ms) when this data expires
 }
 
 @Injectable({ providedIn: 'root' })
 export class FormSaverService {
   private readonly defaults = inject(FORM_SAVER_DEFAULT_OPTIONS, { optional: true }) || {};
-  constructor(@Optional() private router?: Router) {}
+  constructor(@Optional() private router?: Router) { }
 
   attach(control: AbstractControl, options: Partial<FormSaverOptions> = {}): AttachHandle {
     const opts = { debounceTime: 300, ...this.defaults, ...options } as FormSaverOptions;
@@ -29,7 +30,8 @@ export class FormSaverService {
     }
 
     const sub = new Subscription();
-    const valueChanges = control.valueChanges.pipe(startWith(control.value), debounceTime(opts.debounceTime ?? 300));
+    // Skip startWith to avoid immediately overwriting after expiration clear
+    const valueChanges = control.valueChanges.pipe(debounceTime(opts.debounceTime ?? 300));
 
     sub.add(valueChanges.subscribe(() => this.save(control, opts, key, storage)));
 
@@ -47,7 +49,7 @@ export class FormSaverService {
   clear(key: string, storage?: StorageLike): void {
     const s = (storage ?? this.getStorage());
     const res = s.removeItem(key);
-    if (res instanceof Promise) res.catch(() => {});
+    if (res instanceof Promise) res.catch(() => { });
   }
 
   public getStorage(custom?: StorageLike | 'localStorage' | 'sessionStorage'): StorageLike {
@@ -96,18 +98,28 @@ export class FormSaverService {
     if (rawOrPromise instanceof Promise) {
       return rawOrPromise.then(raw => {
         if (!raw) return false;
-        return this.restorePayload(control, raw, opts);
+        return this.restorePayload(control, raw, opts, key, storage);
       });
     }
 
     const raw = rawOrPromise;
     if (!raw) return false;
-    return this.restorePayload(control, raw, opts);
+    return this.restorePayload(control, raw, opts, key, storage);
   }
 
-  private restorePayload(control: AbstractControl, raw: string, opts: FormSaverOptions): boolean {
+  private restorePayload(control: AbstractControl, raw: string, opts: FormSaverOptions, key?: string, storage?: StorageLike): boolean {
     try {
       const parsed = JSON.parse(raw) as StoredPayload;
+
+      // Check if data has expired
+      if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+        // Data expired, clear it and skip restore
+        if (key && storage) {
+          this.clear(key, storage);
+        }
+        return false;
+      }
+
       const migrated = this.applyMigrations(parsed, opts.version, opts.migrations ?? []);
       this.patchControl(control, migrated.data);
       if (migrated.meta) this.applyMeta(control, migrated.meta);
@@ -121,6 +133,12 @@ export class FormSaverService {
     const data = control.value;
     const meta = this.collectMeta(control);
     const payload: StoredPayload = { v: opts.version, data, meta };
+
+    // Set expiration time if TTL is configured
+    if (opts.ttl && opts.ttl > 0) {
+      payload.expiresAt = Date.now() + opts.ttl;
+    }
+
     return payload;
   }
 
@@ -160,7 +178,7 @@ export class FormSaverService {
     if (ctrl instanceof FormGroup) {
       Object.entries(ctrl.controls).forEach(([k, c]) => Object.assign(out, this.collectMeta(c, [...path, k])));
     } else if (ctrl instanceof FormArray) {
-  ctrl.controls.forEach((c: AbstractControl, i: number) => Object.assign(out, this.collectMeta(c, [...path, String(i)])));
+      ctrl.controls.forEach((c: AbstractControl, i: number) => Object.assign(out, this.collectMeta(c, [...path, String(i)])));
     }
     return out;
   }
@@ -175,7 +193,7 @@ export class FormSaverService {
     if (ctrl instanceof FormGroup) {
       Object.entries(ctrl.controls).forEach(([k, c]) => this.applyMeta(c, meta, [...path, k]));
     } else if (ctrl instanceof FormArray) {
-  ctrl.controls.forEach((c: AbstractControl, i: number) => this.applyMeta(c, meta, [...path, String(i)]));
+      ctrl.controls.forEach((c: AbstractControl, i: number) => this.applyMeta(c, meta, [...path, String(i)]));
     }
   }
 
@@ -184,7 +202,7 @@ export class FormSaverService {
     try {
       const result = storage.setItem(key, JSON.stringify(payload));
       if (result instanceof Promise) {
-          result.catch(() => { /* ignore */ });
+        result.catch(() => { /* ignore */ });
       }
     } catch {
       // ignore quota or serialization errors
