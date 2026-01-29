@@ -118,18 +118,19 @@ AttachHandle (returned from attach):
 - `control: AbstractControl` — the control attached
 - `clear(): void` — remove saved payload
 - `destroy(): void` — unsubscribe from valueChanges and stop persisting
+- `save(): void` — manually trigger a save (ignoring debounce)
 
 ## Options (FormSaverOptions)
 
-| Property      |                 Type | Default                              | Description                                                                                                                             |
-| ------------- | -------------------: | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| key           |               string | —                                    | Storage key. If omitted and `autoKey` is true, key is derived from current route (requires Router). Otherwise defaults to 'form-saver'. |
-| autoKey       |              boolean | false                                | Derive key from current route URL (requires Router in DI).                                                                              |
-| debounceTime  |               number | 300                                  | Debounce ms for valueChanges persistence.                                                                                               |
-| version       |               number | —                                    | Optional version identifier for saved payload. Works with migrations.                                                                   |
-| migrations    | FormSaverMigration[] | []                                   | Array of migrations to bring old payloads forward.                                                                                      |
-| clearOnSubmit |              boolean | false                                | When true, the directive will clear the saved payload on ngSubmit.                                                                      |
-| storage       |          StorageLike | localStorage (fallback to in-memory) | Custom storage backend implementing getItem/setItem/removeItem.                                                                         |
+| Property      |                                                      Type | Default                              | Description                                                                                                                             |
+| ------------- | --------------------------------------------------------: | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| key           |                                                    string | —                                    | Storage key. If omitted and `autoKey` is true, key is derived from current route (requires Router). Otherwise defaults to 'form-saver'. |
+| autoKey       |                                                   boolean | false                                | Derive key from current route URL (requires Router in DI).                                                                              |
+| debounceTime  |                                                    number | 300                                  | Debounce ms for valueChanges persistence.                                                                                               |
+| version       |                                                    number | —                                    | Optional version identifier for saved payload. Works with migrations.                                                                   |
+| migrations    |                                      FormSaverMigration[] | []                                   | Array of migrations to bring old payloads forward.                                                                                      |
+| clearOnSubmit |                                                   boolean | false                                | When true, the directive will clear the saved payload on ngSubmit.                                                                      |
+| storage       | StorageLike &#124; 'localStorage' &#124; 'sessionStorage' | localStorage (fallback to in-memory) | Storage backend. Can be a custom object or one of the built-in strings.                                                                 |
 
 ### Default provider
 
@@ -161,17 +162,25 @@ When a saved payload with `v = 1` is found, the code above will apply the migrat
 
 ## Custom storage
 
-If you need to persist to a server or to `sessionStorage` or a cookie-backed storage, implement the `StorageLike` interface and pass it via options:
+If you need to persist to `sessionStorage`, you can simply pass the string:
 
 ```ts
-const customStorage = {
-  getItem: (k: string) => myStore.get(k) ?? null,
-  setItem: (k: string, v: string) => myStore.set(k, v),
-  removeItem: (k: string) => myStore.delete(k),
+this.saver.attach(this.form, { key: "cart", storage: 'sessionStorage' });
+```
+
+If you need a custom backend (e.g. IndexedDB, Cookies, or API), implement the `StorageLike` interface and pass it via options. The interface supports both synchronous and asynchronous (Promise) operations.
+
+```ts
+const customAsyncStorage = {
+  getItem: (k: string) => db.get(k) ?? null, // can return Promise<string | null>
+  setItem: (k: string, v: string) => db.put(k, v), // can return Promise<void>
+  removeItem: (k: string) => db.delete(k), // can return Promise<void>
 };
 
-this.saver.attach(this.form, { key: "cart", storage: customStorage });
+this.saver.attach(this.form, { key: "cart", storage: customAsyncStorage });
 ```
+
+You can also use `FormSaverService.getStorage(custom?: ...)` to retrieve the resolved storage instance.
 
 ## Use-cases
 
@@ -227,9 +236,9 @@ Contributions, bug reports and PRs are welcome. Please follow the standard Angul
 
 ## Version TODOs
 
-- [ ] Add `getStorage()` to service
-- [ ] Support multiple storage backends: IndexedDB, localStorage, sessionStorage; unify `save` API
-- [ ] Add manual save trigger/handler
+- [x] Add `getStorage()` to service
+- [x] Support multiple storage backends: IndexedDB, localStorage, sessionStorage; unify `save` API
+- [x] Add manual save trigger/handler
 
 ## License
 
