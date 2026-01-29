@@ -15,7 +15,10 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:form-saver": "node dist/form-saver/server/server.mjs"
+    "serve:ssr:form-saver": "node dist/form-saver/server/server.mjs",
+    "lib:build": "ng build ng-form-saver --configuration production",
+    "lib:pack": "npm run lib:build && cd dist/ng-form-saver && npm pack",
+    "lib:publish": "npm run lib:build && cd dist/ng-form-saver && npm publish"
   },
   "prettier": {
     "overrides": [
