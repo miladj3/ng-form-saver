@@ -1,6 +1,5 @@
-import { Directive, HostListener, Input, OnDestroy, OnInit, Optional, inject } from '@angular/core';
+import { Directive, EventEmitter, HostListener, Input, OnDestroy, OnInit, Optional, Output, inject } from '@angular/core';
 import { FormGroupDirective, NgForm } from '@angular/forms';
-import { Router } from '@angular/router';
 import { FORM_SAVER_DEFAULT_OPTIONS } from './form-saver.tokens';
 import { FormSaverService } from './form-saver.service';
 import { AttachHandle, FormSaverOptions } from './form-saver.types';
@@ -12,15 +11,17 @@ import { AttachHandle, FormSaverOptions } from './form-saver.types';
 export class FormSaverDirective implements OnInit, OnDestroy {
   @Input('formSaver') formSaverInput?: string | Partial<FormSaverOptions> | '' | true | false;
 
+  /** Emits the AttachHandle after the form is attached, enabling on-demand save via handle.save() */
+  @Output() formSaverHandle = new EventEmitter<AttachHandle>();
+
   private readonly defaults = inject(FORM_SAVER_DEFAULT_OPTIONS, { optional: true }) || {};
   private handle?: AttachHandle;
 
   constructor(
-    private saver: FormSaverService,
-    @Optional() private ngForm?: NgForm,
-    @Optional() private formGroupDirective?: FormGroupDirective,
-    @Optional() private router?: Router
-  ) {}
+    private readonly saver: FormSaverService,
+    @Optional() private readonly ngForm?: NgForm,
+    @Optional() private readonly formGroupDirective?: FormGroupDirective
+  ) { }
 
   ngOnInit(): void {
     const control = this.formGroupDirective?.control ?? this.ngForm?.form;
@@ -30,6 +31,7 @@ export class FormSaverDirective implements OnInit, OnDestroy {
 
     const merged = this.mergeOptions(this.formSaverInput);
     this.handle = this.saver.attach(control, merged);
+    this.formSaverHandle.emit(this.handle);
   }
 
   ngOnDestroy(): void {

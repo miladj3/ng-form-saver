@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { FormSaverDirective, FormSaverService } from '../../../projects/ng-form-saver/src/public-api';
+import { AttachHandle, FormSaverDirective, FormSaverService } from '../../../projects/ng-form-saver/src/public-api';
 
 @Component({
   selector: 'app-form-demo',
@@ -12,7 +12,7 @@ import { FormSaverDirective, FormSaverService } from '../../../projects/ng-form-
     <section class="demo">
       <h2>ng-form-saver demo</h2>
 
-      <form [formGroup]="form" [formSaver]="formOptions" (ngSubmit)="onSubmit()">
+      <form [formGroup]="form" [formSaver]="formOptions" (formSaverHandle)="onHandleReady($event)" (ngSubmit)="onSubmit()">
         <div>
           <label for="name">Name</label>
           <input id="name" type="text" formControlName="name" />
@@ -25,16 +25,18 @@ import { FormSaverDirective, FormSaverService } from '../../../projects/ng-form-
 
         <div style="margin-top:12px">
           <button type="submit">Submit</button>
+          <button type="button" (click)="saveNow()" [disabled]="!handle">Save Now</button>
           <button type="button" (click)="clearSaved()">Clear saved</button>
         </div>
       </form>
 
       <h3>Saved payload (localStorage key: {{ demoKey }})</h3>
       <p class="ttl-info">TTL: 1 minute — data expires at: {{ expiresAtFormatted }}</p>
+      <p class="handle-info" *ngIf="handle">Handle ready ✓ — use "Save Now" for on-demand save</p>
       <pre>{{ savedPayload }}</pre>
     </section>
   `,
-  styles: [`.demo { max-width:520px; padding:1rem } label { display:block; margin-top:8px } input { width:100%; padding:6px; } pre { background:#f5f5f5; padding:8px } .ttl-info { font-size:0.9em; color:#666; margin:4px 0 }`]
+  styles: [`.demo { max-width:520px; padding:1rem } label { display:block; margin-top:8px } input { width:100%; padding:6px; } pre { background:#f5f5f5; padding:8px } .ttl-info { font-size:0.9em; color:#666; margin:4px 0 } .handle-info { font-size:0.9em; color:#28a745; margin:4px 0 }`]
 })
 export class FormDemoComponent implements OnDestroy {
   readonly demoKey = 'demo-form';
@@ -49,12 +51,28 @@ export class FormDemoComponent implements OnDestroy {
 
   savedPayload: string | null = null;
   expiresAtFormatted: string = '—';
+  handle?: AttachHandle;
   private sub = new Subscription();
 
   constructor(private saver: FormSaverService) {
     // update preview on changes
     this.updateSavedDisplay();
     this.sub.add(this.form.valueChanges.subscribe(() => this.updateSavedDisplay()));
+  }
+
+  /** Called when the formSaverHandle output emits the AttachHandle */
+  onHandleReady(handle: AttachHandle): void {
+    this.handle = handle;
+    console.log('Form saver attached with key:', handle.key);
+  }
+
+  /** On-demand save — immediately persist form state */
+  saveNow(): void {
+    if (this.handle) {
+      this.handle.save();
+      this.updateSavedDisplay();
+      console.log('Form saved on-demand!');
+    }
   }
 
   private updateSavedDisplay(): void {

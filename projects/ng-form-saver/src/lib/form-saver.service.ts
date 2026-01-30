@@ -15,9 +15,9 @@ interface StoredPayload {
 @Injectable({ providedIn: 'root' })
 export class FormSaverService {
   private readonly defaults = inject(FORM_SAVER_DEFAULT_OPTIONS, { optional: true }) || {};
-  constructor(@Optional() private router?: Router) { }
+  constructor(@Optional() private readonly router?: Router) { }
 
-  attach(control: AbstractControl, options: Partial<FormSaverOptions> = {}): AttachHandle {
+  public attach(control: AbstractControl, options: Partial<FormSaverOptions> = {}): AttachHandle {
     const opts = { debounceTime: 300, ...this.defaults, ...options } as FormSaverOptions;
     const storage = this.getStorage(opts.storage);
     const key = this.resolveKey(opts);
@@ -46,10 +46,22 @@ export class FormSaverService {
     return handle;
   }
 
-  clear(key: string, storage?: StorageLike): void {
+  public clear(key: string, storage?: StorageLike): void {
     const s = (storage ?? this.getStorage());
     const res = s.removeItem(key);
     if (res instanceof Promise) res.catch(() => { });
+  }
+
+  public save(control: AbstractControl, opts: FormSaverOptions, key: string, storage: StorageLike) {
+    const payload = this.buildPayload(control, opts);
+    try {
+      const result = storage.setItem(key, JSON.stringify(payload));
+      if (result instanceof Promise) {
+        result.catch(() => { /* ignore */ });
+      }
+    } catch {
+      // ignore quota or serialization errors
+    }
   }
 
   public getStorage(custom?: StorageLike | 'localStorage' | 'sessionStorage'): StorageLike {
@@ -194,18 +206,6 @@ export class FormSaverService {
       Object.entries(ctrl.controls).forEach(([k, c]) => this.applyMeta(c, meta, [...path, k]));
     } else if (ctrl instanceof FormArray) {
       ctrl.controls.forEach((c: AbstractControl, i: number) => this.applyMeta(c, meta, [...path, String(i)]));
-    }
-  }
-
-  private save(control: AbstractControl, opts: FormSaverOptions, key: string, storage: StorageLike) {
-    const payload = this.buildPayload(control, opts);
-    try {
-      const result = storage.setItem(key, JSON.stringify(payload));
-      if (result instanceof Promise) {
-        result.catch(() => { /* ignore */ });
-      }
-    } catch {
-      // ignore quota or serialization errors
     }
   }
 }
